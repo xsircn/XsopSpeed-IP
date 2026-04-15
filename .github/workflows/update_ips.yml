@@ -15,35 +15,25 @@ jobs:
 
       - name: Download and Setup CloudflareST
         run: |
-          # 1. 获取最新版下载链接
           DOWNLOAD_URL=$(curl -s https://api.github.com/repos/XIU2/CloudflareSpeedTest/releases/latest | grep "browser_download_url.*linux_amd64.tar.gz" | cut -d '"' -f 4)
-          echo "正在下载: $DOWNLOAD_URL"
           curl -L -o CloudflareST.tar.gz "$DOWNLOAD_URL"
-          
-          # 2. 解压
           tar -zxf CloudflareST.tar.gz
-          
-          # 3. 精准重命名程序（解决新版解压出 cfst 的问题）
-          if [ -f "cfst" ]; then
-              mv cfst CloudflareST
-          fi
-          
-          # 4. 赋权并检查
+          if [ -f "cfst" ]; then mv cfst CloudflareST; fi
           chmod +x CloudflareST
-          file CloudflareST
 
       - name: Run Speedtest
         run: |
-          # 放宽测速条件以确保 100% 生成 result.csv
-          # -n 200: 测试 200 个 IP
-          # -p 10: 只输出前 10 个最快的
-          # 去掉 -sl 和 -tl 参数，避免因为 Action 服务器环境太差找不到 IP 而报错
-          sudo ./CloudflareST -n 200 -p 10 -o "result.csv"
+          # 【修改点 1】：通过 -p 10 参数，让工具在控制台显示前 10 名
+          # 虽然 -o 默认会导出所有测试通过的 IP，但我们可以通过后续脚本裁剪
+          sudo ./CloudflareST -n 500 -tl 200 -sl 5 -p 10 -o "full_result.csv"
           
-          # 检查文件是否生成
-          if [ ! -f "result.csv" ]; then
-            echo "错误：测速未产生 result.csv，尝试使用基础模式运行..."
-            sudo ./CloudflareST -o "result.csv"
+          # 【修改点 2】：使用 sed 命令只保留 CSV 的表头（第 1 行）和前 10 行数据（第 2 到 11 行）
+          if [ -f "full_result.csv" ]; then
+              sed -n '1,11p' full_result.csv > result.csv
+              echo "已成功裁剪数据，仅保留前 10 组最快 IP"
+          else
+            echo "未能生成测速文件"
+            exit 1
           fi
 
       - name: Commit and Push
@@ -51,10 +41,10 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # 只有文件存在且有内容变动时才提交
           if [ -s "result.csv" ]; then
             git add result.csv
-            git diff --quiet && git diff --staged --quiet || (git commit -m "自动更新优选IP: $(date)" && git push)
+            # 只有内容变动时才推送
+            git diff --quiet && git diff --staged --quiet || (git commit -m "自动更新优选IP (Top 10): $(date)" && git push)
           else
-            echo "未发现有效数据，跳过提交"
+            echo "无有效数据"
           fi
