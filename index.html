@@ -115,8 +115,8 @@
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td style="color: var(--primary)">${cols[0]}</td>
-                        <td><span class="${lossClass}">${loss}</span></td>
                         <td><span style="opacity:0.8">${ping} ms</span></td>
+                        <td><span class="${lossClass}">${loss}</span></td>
                         <td><span style="color:var(--success); font-weight:bold">${speed} MB/s</span></td>
                     `;
                     tbody.appendChild(tr);
