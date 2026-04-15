@@ -3,79 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xosp.De官方优选节点监控</title>
+    <title>Xsop.De 优选节点</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_32x32.gif">
 <link rel="apple-touch-icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_180x180.gif">
     <style>
-        :root {
-            --primary: #4776E6;
-            --secondary: #8E54E9;
-            --success: #00c853;
-            --warning: #ffab00;
-            --danger: #ff5252;
-            --bg: #f5f7fa;
-            --card-bg: rgba(255, 255, 255, 0.9);
-            --text: #2d3436;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #1a1a2e;
-                --card-bg: rgba(255, 255, 255, 0.05);
-                --text: #e1e1e1;
-            }
-        }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            margin: 0; padding: 20px; color: var(--text);
-            min-height: 100vh;
-        }
-
+        :root { --primary: #4776E6; --secondary: #8E54E9; --success: #00c853; --warning: #ffab00; --danger: #ff5252; --bg: #f5f7fa; --card-bg: rgba(255, 255, 255, 0.9); --text: #2d3436; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: rgba(255, 255, 255, 0.05); --text: #e1e1e1; } }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
         .container { max-width: 1000px; margin: 0 auto; }
-
         header { text-align: center; margin-bottom: 30px; }
-        h1 { font-size: 2.2rem; margin-bottom: 10px; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
-
-        .meta { background: var(--card-bg); backdrop-filter: blur(10px); padding: 8px 20px; border-radius: 50px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1); display: inline-block; }
-
-        .table-container {
-            background: var(--card-bg);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-
+        h1 { font-size: 2.2rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+        .meta { background: var(--card-bg); padding: 8px 20px; border-radius: 50px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1); display: inline-block; }
+        .table-container { background: var(--card-bg); border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; }
-        th { background: rgba(71, 118, 230, 0.1); padding: 15px; text-align: left; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
-        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: 'Fira Code', monospace; font-size: 0.9rem; }
-
-        .badge { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; }
+        th { background: rgba(71, 118, 230, 0.1); padding: 15px; text-align: left; font-size: 0.85rem; }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; }
+        .badge { padding: 4px 10px; border-radius: 6px; font-weight: bold; }
         .loss-zero { color: var(--success); }
-        .loss-warn { color: var(--warning); font-weight: bold; }
-        .loss-danger { color: var(--danger); font-weight: bold; }
-
-        .loading-box { text-align: center; padding: 60px; opacity: 0.6; }
-
-        @media (max-width: 600px) {
-            td, th { padding: 10px 5px; font-size: 0.75rem; }
-        }
+        .loss-warn { color: var(--warning); }
+        .speed-val { color: var(--success); font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Xsop.De优选节点</h1>
+            <h1>Xsop.De 优选节点</h1>
             <div class="meta"><i class="fa-regular fa-clock"></i> 更新时间: <span id="update-time">-</span></div>
         </header>
-
         <div class="table-container">
-            <div id="loader" class="loading-box"><i class="fa-solid fa-spinner fa-spin"></i> 正在分析实时丢包率数据...</div>
-            <table id="ip-table" style="display: none;">
+            <table id="ip-table">
                 <thead>
                     <tr>
                         <th>节点地址</th>
@@ -93,41 +50,37 @@
         async function loadData() {
             try {
                 const response = await fetch('result.csv');
-                if (!response.ok) throw new Error();
                 const csvData = await response.text();
-                
                 const rows = csvData.split('\n').filter(row => row.trim() !== "");
-                const tbody = document.getElementById('result-body');
                 
+                // --- 智能对齐逻辑 ---
+                const headers = rows[0].split(',');
+                const idx = {
+                    ip: headers.findIndex(h => h.includes("IP") || h.includes("Address")),
+                    loss: headers.findIndex(h => h.includes("丢包") || h.includes("Loss")),
+                    latency: headers.findIndex(h => h.includes("延迟") || h.includes("Latency")),
+                    speed: headers.findIndex(h => h.includes("速度") || h.includes("Speed"))
+                };
+
+                const tbody = document.getElementById('result-body');
                 for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i].split(',');
-                    if(cols.length < 7) continue;
+                    if (cols.length < 4) continue;
 
-                    const loss = cols[4]; // 第 4 列是丢包率
-                    const ping = cols[5];
-                    const speed = parseFloat(cols[6]).toFixed(2);
-
-                    // 丢包率样式逻辑
-                    let lossClass = 'loss-zero';
-                    if (parseFloat(loss) > 0) lossClass = 'loss-warn';
-                    if (parseFloat(loss) > 10) lossClass = 'loss-danger';
-
+                    const loss = cols[idx.loss] || "0.00";
+                    const speed = parseFloat(cols[idx.speed] || 0).toFixed(2);
+                    
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td style="color: var(--primary)">${cols[0]}</td>
-                        <td><span class="${lossClass}">${loss}</span></td>
-                        <td><span style="opacity:0.8">${ping} ms</span></td>
-                        <td><span style="color:var(--success); font-weight:bold">${speed} MB/s</span></td>
+                        <td style="color: var(--primary)">${cols[idx.ip]}</td>
+                        <td><span class="badge ${parseFloat(loss)>0?'loss-warn':'loss-zero'}">${loss}%</span></td>
+                        <td><span style="opacity:0.8">${cols[idx.latency]} ms</span></td>
+                        <td><span class="speed-val">${speed} MB/s</span></td>
                     `;
                     tbody.appendChild(tr);
                 }
-
                 document.getElementById('update-time').innerText = new Date().toLocaleString();
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('ip-table').style.display = 'table';
-            } catch (err) {
-                document.getElementById('loader').innerText = "读取数据失败，请确保 result.csv 已生成。";
-            }
+            } catch (e) { console.error("Data error", e); }
         }
         loadData();
     </script>
