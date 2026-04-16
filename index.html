@@ -6,7 +6,7 @@
     <title>Xsop.De 优选节点</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_32x32.gif">
-<link rel="apple-touch-icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_180x180.gif">
+    <link rel="apple-touch-icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_180x180.gif">
     <style>
         :root { --primary: #4776E6; --secondary: #8E54E9; --success: #00c853; --warning: #ffab00; --danger: #ff5252; --bg: #f5f7fa; --card-bg: rgba(255, 255, 255, 0.9); --text: #2d3436; }
         @media (prefers-color-scheme: dark) { :root { --bg: #1a1a2e; --card-bg: rgba(255, 255, 255, 0.05); --text: #e1e1e1; } }
@@ -26,7 +26,7 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="main-content" style="display: none;">
         <header>
             <h1>Xsop.De 优选节点</h1>
             <div class="meta"><i class="fa-regular fa-clock"></i> 更新时间: <span id="update-time">-</span></div>
@@ -47,13 +47,69 @@
     </div>
 
     <script>
-        async function loadData() {
+        // --- 1. 配置区 ---
+        // 记得替换为你真实的 Worker 地址
+        const AUTH_API = "https://auth-gate.ibuy.eu.cc/?pass="; 
+        const TG_BOT_LINK = "@nodeabot"; // 替换为你的机器人 ID
+
+        // --- 2. 页面初始化与校验逻辑 ---
+        (async function init() {
+            const savedToken = localStorage.getItem('access_token');
+            
+            if (savedToken) {
+                const ok = await verify(savedToken);
+                if (ok) return loadData();
+            }
+            
+            promptAuth();
+        })();
+
+        async function promptAuth() {
+            const input = prompt(`请输入访问口令\n(请在 TG 机器人 ${TG_BOT_LINK} 获取):`);
+            if (!input) {
+                document.body.innerHTML = `
+                    <div style='text-align:center; margin-top:100px;'>
+                        <h2>⚠️ 访问被拒绝</h2>
+                        <p>查看优选节点需要有效口令。</p>
+                        <button onclick="location.reload()" style="padding:10px 20px; cursor:pointer;">刷新重试</button>
+                    </div>`;
+                return;
+            }
+            
+            const ok = await verify(input);
+            if (ok) {
+                localStorage.setItem('access_token', input);
+                loadData();
+            } else {
+                alert("口令错误或已失效！");
+                promptAuth();
+            }
+        }
+
+        async function verify(pwd) {
             try {
-               const response = await fetch('result.csv?t=' + new Date().getTime());;
+                const res = await fetch(AUTH_API + pwd);
+                const json = await res.json();
+                return json.status === "ok";
+            } catch (e) {
+                console.error("校验服务异常");
+                return false;
+            }
+        }
+
+        // --- 3. 数据加载与渲染逻辑 ---
+        async function loadData() {
+            // 校验成功后显示主容器
+            document.getElementById('main-content').style.display = 'block';
+            
+            try {
+                // 使用时间戳防止 result.csv 被浏览器缓存
+                const response = await fetch('result.csv?t=' + new Date().getTime());
                 const csvData = await response.text();
                 const rows = csvData.split('\n').filter(row => row.trim() !== "");
                 
-                // --- 智能对齐逻辑 ---
+                if (rows.length < 2) return;
+
                 const headers = rows[0].split(',');
                 const idx = {
                     ip: headers.findIndex(h => h.includes("IP") || h.includes("Address")),
@@ -62,27 +118,4 @@
                     speed: headers.findIndex(h => h.includes("速度") || h.includes("Speed"))
                 };
 
-                const tbody = document.getElementById('result-body');
-                for (let i = 1; i < rows.length; i++) {
-                    const cols = rows[i].split(',');
-                    if (cols.length < 4) continue;
-
-                    const loss = cols[idx.loss] || "0.00";
-                    const speed = parseFloat(cols[idx.speed] || 0).toFixed(2);
-                    
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="color: var(--primary)">${cols[idx.ip]}</td>
-                        <td><span class="badge ${parseFloat(loss)>0?'loss-warn':'loss-zero'}">${loss}%</span></td>
-                        <td><span style="opacity:0.8">${cols[idx.latency]} ms</span></td>
-                        <td><span class="speed-val">${speed} MB/s</span></td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-                document.getElementById('update-time').innerText = new Date().toLocaleString();
-            } catch (e) { console.error("Data error", e); }
-        }
-        loadData();
-    </script>
-</body>
-</html>
+                const tbody = document.
