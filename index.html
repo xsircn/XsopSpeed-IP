@@ -23,9 +23,34 @@
         .loss-zero { color: var(--success); }
         .loss-warn { color: var(--warning); }
         .speed-val { color: var(--success); font-weight: bold; }
+
+        /* 美化遮罩层的额外样式 */
+        #auth-gate {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f8fafc; z-index: 999999; align-items: center; justify-content: center;
+        }
     </style>
 </head>
+
 <body>
+    <div id="auth-gate">
+        <div style="background: white; padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center;">
+            <div style="font-size: 50px; margin-bottom: 20px;">🛡️</div>
+            <h2 style="margin-bottom: 10px; color: #1e293b;">安全验证</h2>
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 25px; line-height: 1.5;">
+                请输入访问口令以继续<br>
+                获取口令请关注：<a href="https://t.me/nodeabot" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;">@nodeabot</a>
+            </p>
+            <input type="text" id="passInput" placeholder="请输入 6 位口令" maxlength="6" 
+                style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 18px; text-align: center; letter-spacing: 4px; outline: none; transition: border 0.3s; color: #333;">
+            <div id="errorTip" style="color: #ef4444; font-size: 13px; margin-top: 10px; display: none;">❌ 口令错误，请重新获取</div>
+            <button onclick="handleVerify()" id="verifyBtn" 
+                style="width: 100%; margin-top: 20px; padding: 14px; background: #3b82f6; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                确认进入
+            </button>
+        </div>
+    </div>
+
     <div class="container" id="main-content">
         <header>
             <h1>Xsop.De 优选节点</h1>
@@ -49,47 +74,60 @@
     <script>
         // --- 配置区 ---
         const AUTH_API = "https://auth-gate.ibuy.eu.cc/?pass=";
-        const TG_BOT_LINK = "@nodeabot"; // 例如 @XsopSpeed_bot
 
-        // --- 核心逻辑 ---
-        async function verify(pwd) {
+        // --- 统一逻辑 ---
+        const gate = document.getElementById('auth-gate');
+        const mainContent = document.getElementById('main-content');
+        const passInput = document.getElementById('passInput');
+        const errorTip = document.getElementById('errorTip');
+        const verifyBtn = document.getElementById('verifyBtn');
+
+        // 验证请求函数
+        async function checkPass(pwd) {
             if (!pwd) return false;
             try {
                 const res = await fetch(AUTH_API + encodeURIComponent(pwd));
                 const json = await res.json();
                 return json.status === "ok";
             } catch (e) {
-                console.error("验证接口异常", e);
+                console.error("验证异常", e);
                 return false;
             }
         }
 
-        async function promptAuth() {
-            const input = prompt("请输入访问口令（请在 TG 机器人 " + TG_BOT_LINK + " 获取）：");
-            if (input === null || input === "") {
-                document.body.innerHTML = "<div style='text-align:center;padding:100px;'><h2>🔐 访问受限</h2><p>请获取口令后刷新页面重试。</p></div>";
-                return;
-            }
-            
-            const isOk = await verify(input);
+        // 点击按钮验证
+        window.handleVerify = async function() {
+            const pwd = passInput.value.trim();
+            if (!pwd) return;
+
+            verifyBtn.innerText = "正在验证...";
+            verifyBtn.disabled = true;
+
+            const isOk = await checkPass(pwd);
             if (isOk) {
-                localStorage.setItem('access_token', input);
-                loadData();
+                localStorage.setItem('access_token', pwd);
+                showContent();
             } else {
-                alert("口令错误或已过期，请重新获取！");
-                promptAuth();
+                errorTip.style.display = 'block';
+                passInput.value = '';
+                verifyBtn.innerText = "确认进入";
+                verifyBtn.disabled = false;
             }
+        };
+
+        // 验证通过后展示内容并加载数据
+        function showContent() {
+            gate.style.display = 'none';
+            mainContent.style.display = 'block';
+            loadData();
         }
 
+        // 加载 CSV 数据逻辑
         async function loadData() {
-            // 验证通过，显示内容
-            document.getElementById('main-content').style.display = 'block';
-            
             try {
                 const response = await fetch('result.csv?t=' + Date.now());
                 const csvData = await response.text();
                 const rows = csvData.split('\n').filter(row => row.trim() !== "");
-                
                 if (rows.length < 2) return;
 
                 const headers = rows[0].split(',');
@@ -106,7 +144,6 @@
                 for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i].split(',');
                     if (cols.length < 4) continue;
-
                     const loss = cols[idx.loss] || "0.00";
                     const speed = parseFloat(cols[idx.speed] || 0).toFixed(2);
                     
@@ -125,18 +162,22 @@
             }
         }
 
-        // 页面启动逻辑
+        // 页面启动检查
         window.addEventListener('DOMContentLoaded', async () => {
             const savedToken = localStorage.getItem('access_token');
             if (savedToken) {
-                const isOk = await verify(savedToken);
+                const isOk = await checkPass(savedToken);
                 if (isOk) {
-                    loadData();
+                    showContent();
                     return;
                 }
             }
-            promptAuth();
+            // 没验过或失效，显示美化遮罩
+            gate.style.display = 'flex';
         });
+
+        // 支持回车
+        passInput.addEventListener('keypress', e => { if(e.key === 'Enter') handleVerify(); });
     </script>
 </body>
 </html>
