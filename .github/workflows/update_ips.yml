@@ -34,10 +34,10 @@ jobs:
               
               # 3. 【终极修正】硬编码端口号为 443
               # $1 是 IP 地址，后面直接拼接 :443#US-Xsop
-              awk -F',' 'NR>1 && NR<=11 {print $1 ":443#US-Xsop"}' full_result.csv > api.txt
+              awk -F',' 'NR>1 && NR<=11 {print $1 ":443#US-Xsop"}' full_result.csv > api
               
-              echo "api.txt 已生成，预览内容："
-              cat api.txt
+              echo "api 已生成，预览内容："
+              cat api
           else
               echo "错误：未生成测速文件"
               exit 1
@@ -47,5 +47,5 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add result.csv api.txt
+          git add result.csv api
           git diff --quiet && git diff --staged --quiet || (git commit -m "修正订阅格式: $(date)" && git push)
