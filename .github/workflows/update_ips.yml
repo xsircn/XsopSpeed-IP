@@ -23,40 +23,23 @@ jobs:
           if [ -f "cfst" ]; then mv cfst CloudflareST; fi
           chmod +x CloudflareST
 
-      - name: Run Speedtest and Identify ISP
+      - name: Run Speedtest
         run: |
           # 1. 运行测速
           sudo ./CloudflareST -n 500 -t 10 -p 10 -o "full_result.csv"
           
           if [ -f "full_result.csv" ]; then
-              # 2. 初始化结果文件
-              # 写入原有的表头，并在末尾追加 "运营商" 列
-              head -n 1 full_result.csv | sed 's/\r//g' | awk '{print $0",运营商"}' > result.csv
-              > api # 清空旧的 api 文件
+              # 2. 生成网页用的 CSV
+              sed -n '1,11p' full_result.csv > result.csv
               
-              # 3. 循环处理前 10 个最优 IP 并查询 ISP
-              tail -n +2 full_result.csv | head -n 10 | while IFS=, read -r line; do
-                  clean_line=$(echo "$line" | sed 's/\r//g')
-                  ip=$(echo "$clean_line" | cut -d',' -f1)
-                  
-                  echo "正在查询 IP: $ip 的运营商信息..."
-                  
-                  # 使用 ip-api.com 获取 ISP (英文)
-                  isp_info=$(curl -s --max-time 5 "http://ip-api.com/json/$ip?fields=isp" | sed 's/.*"isp":"\([^"]*\)".*/\1/')
-                  if [ -z "$isp_info" ] || [[ "$isp_info" == *"{"* ]]; then isp_info="Unknown"; fi
-                  
-                  # 写入用于网页展示的 result.csv (追加 ISP 列)
-                  echo "$clean_line,$isp_info" >> result.csv
-                  
-                  # 写入用于订阅的 api 文件 (格式: IP:443#运营商-Xsop)
-                  safe_isp=$(echo "$isp_info" | tr ' ' '_')
-                  echo "$ip:443#${safe_isp}-Xsop" >> api
-              done
+              # 3. 【终极修正】硬编码端口号为 443
+              # $1 是 IP 地址，后面直接拼接 :443#US-Xsop
+              awk -F',' 'NR>1 && NR<=11 {print $1 ":443#US-Xsop"}' full_result.csv > api
               
-              echo "✅ 处理完成。api 文件预览："
+              echo "api 已生成，预览内容："
               cat api
           else
-              echo "❌ 错误：未生成测速文件"
+              echo "错误：未生成测速文件"
               exit 1
           fi
 
@@ -65,5 +48,4 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add result.csv api
-          # 检查是否有文件更改，避免空提交报错
-          git diff --quiet && git diff --staged --quiet || (git commit -m "自动更新优选IP及运营商: $(date)" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "修正订阅格式: $(date)" && git push)
