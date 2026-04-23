@@ -3,128 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xsop.De | 节点优选</title>
+    <title>Xsop.De | 运营商优选</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_32x32.gif">
-    <link rel="apple-touch-icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_180x180.gif">
     <style>
         :root {
             --primary: #4776E6; --secondary: #8E54E9;
-            --cu: #ff6600; /* 联通橙 */
-            --ct: #005bac; /* 电信蓝 */
-            --cm: #0085cf; /* 移动蓝 */
+            --cu: #ff6600; --ct: #005bac; --cm: #0085cf;
             --bg: #f8fafc; --text: #1e293b; --glass: rgba(255, 255, 255, 0.9);
         }
         @media (prefers-color-scheme: dark) {
             :root { --bg: #0f172a; --text: #f1f5f9; --glass: rgba(30, 41, 59, 0.7); }
         }
-
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; display: none; }
-
-        /* 分类标题样式 */
-        .isp-group { margin-top: 40px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-        .isp-group h2 { font-size: 1.2rem; font-weight: 800; margin: 0; }
-        .isp-badge { padding: 4px 12px; border-radius: 6px; color: white; font-size: 0.75rem; font-weight: bold; }
-        .bg-cu { background: var(--cu); }
-        .bg-ct { background: var(--ct); }
-        .bg-cm { background: var(--cm); }
-
-        /* 表格美化 */
-        .table-wrapper { background: var(--glass); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.1); }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        .container { max-width: 1000px; margin: 40px auto; display: none; }
+        header { text-align: center; margin-bottom: 40px; }
+        h1 { background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem; font-weight: 800; margin: 0; }
+        
+        .isp-group { margin-top: 40px; margin-bottom: 15px; display: flex; align-items: center; gap: 12px; }
+        .isp-badge { padding: 5px 12px; border-radius: 8px; color: white; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+        .bg-cu { background: var(--cu); } .bg-ct { background: var(--ct); } .bg-cm { background: var(--cm); }
+        
+        .table-wrapper { background: var(--glass); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
         table { width: 100%; border-collapse: collapse; }
-        th { background: rgba(0,0,0,0.02); padding: 12px 20px; text-align: left; font-size: 0.8rem; color: #64748b; text-transform: uppercase; }
-        td { padding: 12px 20px; border-bottom: 1px solid rgba(0,0,0,0.03); font-family: monospace; }
+        th { background: rgba(71, 118, 230, 0.05); padding: 15px 20px; text-align: left; font-size: 0.85rem; color: var(--text-sub); }
+        td { padding: 14px 20px; border-bottom: 1px solid rgba(0,0,0,0.03); font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; }
         .ip-text { color: var(--primary); font-weight: 600; }
         .ms-text { color: #10b981; font-weight: 700; }
 
-        /* 验证遮罩 (保持原逻辑) */
-        #auth-gate { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 99; align-items: center; justify-content: center; }
-        .auth-card { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 320px; }
-        input { width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #eee; border-radius: 10px; text-align: center; letter-spacing: 4px; }
-        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        /* 验证遮罩 */
+        #auth-gate { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(15px); z-index: 999; align-items: center; justify-content: center; }
+        .auth-card { background: var(--glass); padding: 40px; border-radius: 24px; text-align: center; width: 90%; max-width: 400px; border: 1px solid rgba(255,255,255,0.1); }
+        input { width: 100%; padding: 15px; margin: 20px 0; border: 2px solid rgba(0,0,0,0.1); border-radius: 12px; text-align: center; font-size: 20px; letter-spacing: 4px; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--primary); }
+        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1rem; }
     </style>
 </head>
 <body>
 
     <div id="auth-gate">
         <div class="auth-card">
-            <h3>🔐 安全验证</h3>
-            <input type="text" id="passInput" placeholder="输入口令">
-            <button onclick="handleVerify()">确认进入</button>
+            <h2 style="margin:0; color:var(--text);">🛡️ 安全访问</h2>
+            <p style="opacity:0.6; font-size:14px; margin-top:10px;">请输入 6 位验证口令</p>
+            <input type="text" id="passInput" placeholder="输入口令" maxlength="6">
+            <button onclick="handleVerify()">立即进入</button>
         </div>
     </div>
 
     <div class="container" id="main-content">
-        <header style="text-align:center; margin-bottom:30px;">
-            <h1 style="background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">运营商优选 IP</h1>
-            <p style="font-size:0.8rem; opacity:0.6;">更新时间: <span id="update-time">-</span></p>
+        <header>
+            <h1>运营商优选 IP</h1>
+            <div style="margin-top:10px; opacity:0.5; font-size:0.85rem;">
+                <i class="fa-regular fa-clock"></i> <span id="update-time">-</span>
+            </div>
         </header>
 
-        <div class="isp-group"><span class="isp-badge bg-cu">CU</span><h2>中国联通</h2></div>
-        <div class="table-wrapper">
-            <table><thead><tr><th>IP 地址</th><th>延迟</th></tr></thead><tbody id="cu-body"></tbody></table>
-        </div>
+        <div class="isp-group"><span class="isp-badge bg-cu">联通</span><h2>China Unicom</h2></div>
+        <div class="table-wrapper"><table><thead><tr><th>IP 地址</th><th>延迟 (Ping)</th></tr></thead><tbody id="cu-body"></tbody></table></div>
 
-        <div class="isp-group"><span class="isp-badge bg-ct">CT</span><h2>中国电信</h2></div>
-        <div class="table-wrapper">
-            <table><thead><tr><th>IP 地址</th><th>延迟</th></tr></thead><tbody id="ct-body"></tbody></table>
-        </div>
+        <div class="isp-group"><span class="isp-badge bg-ct">电信</span><h2>China Telecom</h2></div>
+        <div class="table-wrapper"><table><thead><tr><th>IP 地址</th><th>延迟 (Ping)</th></tr></thead><tbody id="ct-body"></tbody></table></div>
 
-        <div class="isp-group"><span class="isp-badge bg-cm">CM</span><h2>中国移动</h2></div>
-        <div class="table-wrapper">
-            <table><thead><tr><th>IP 地址</th><th>延迟</th></tr></thead><tbody id="cm-body"></tbody></table>
-        </div>
+        <div class="isp-group"><span class="isp-badge bg-cm">移动</span><h2>China Mobile</h2></div>
+        <div class="table-wrapper"><table><thead><tr><th>IP 地址</th><th>延迟 (Ping)</th></tr></thead><tbody id="cm-body"></tbody></table></div>
     </div>
 
     <script>
         const AUTH_API = "https://auth-gate.ibuy.eu.cc/?pass=";
 
         async function handleVerify() {
-            const pwd = document.getElementById('passInput').value;
-            const res = await fetch(AUTH_API + pwd);
+            const pwd = document.getElementById('passInput').value.trim();
+            const res = await fetch(AUTH_API + encodeURIComponent(pwd));
             const json = await res.json();
             if(json.status === "ok") {
                 localStorage.setItem('access_token', pwd);
                 location.reload();
-            } else { alert("口令错误"); }
+            } else { alert("验证失败，请核对口令"); }
         }
 
         async function loadData() {
             try {
                 const response = await fetch('result.csv?t=' + Date.now());
                 const csvData = await response.text();
-                const rows = csvData.split('\n').slice(1).filter(r => r.trim());
+                const rows = csvData.split('\n').filter(r => r.trim());
+                if (rows.length < 2) return;
 
-                // 准备各运营商容器
+                const headers = rows[0].split(',');
+                // 根据你图片中的 CSV 表头进行精确匹配
+                const ipIdx = headers.findIndex(h => h.includes("IP"));
+                const msIdx = headers.findIndex(h => h.includes("平均延迟") || h.includes("延迟"));
+
                 const lists = { cu: [], ct: [], cm: [] };
 
-                rows.forEach(row => {
+                rows.slice(1).forEach(row => {
                     const cols = row.split(',');
-                    const ip = cols[0];
-                    const latency = cols[2]; // 假设延迟在第3列
-                    const ispInfo = row.toLowerCase(); // 检查整行是否包含运营商关键字
+                    const rowText = row.toLowerCase(); 
+                    const ip = cols[ipIdx] || 'Unknown';
+                    const ms = cols[msIdx] || '0';
 
-                    const html = `<tr><td class="ip-text">${ip}</td><td class="ms-text">${latency} ms</td></tr>`;
+                    const trHtml = `<tr><td class="ip-text">${ip}</td><td class="ms-text">${ms} ms</td></tr>`;
 
-                    if (ispInfo.includes("unicom") || ispInfo.includes("联通")) lists.cu.push(html);
-                    else if (ispInfo.includes("telecom") || ispInfo.includes("电信")) lists.ct.push(html);
-                    else if (ispInfo.includes("mobile") || ispInfo.includes("移动")) lists.cm.push(html);
+                    // 增强匹配：优先匹配备注或地区码中的关键字
+                    if (/unicom|联通|cu|169|4837|9929/.test(rowText)) {
+                        lists.cu.push(trHtml);
+                    } else if (/telecom|电信|ct|4134|4809/.test(rowText)) {
+                        lists.ct.push(trHtml);
+                    } else if (/mobile|移动|cm|9808/.test(rowText)) {
+                        lists.cm.push(trHtml);
+                    }
                 });
 
-                document.getElementById('cu-body').innerHTML = lists.cu.join('') || '<tr><td colspan="2">暂无数据</td></tr>';
-                document.getElementById('ct-body').innerHTML = lists.ct.push ? lists.ct.join('') : ''; 
-                document.getElementById('ct-body').innerHTML = lists.ct.join('') || '<tr><td colspan="2">暂无数据</td></tr>';
-                document.getElementById('cm-body').innerHTML = lists.cm.join('') || '<tr><td colspan="2">暂无数据</td></tr>';
+                document.getElementById('cu-body').innerHTML = lists.cu.join('') || '<tr><td colspan="2" style="text-align:center;opacity:0.5;">暂无联通节点</td></tr>';
+                document.getElementById('ct-body').innerHTML = lists.ct.join('') || '<tr><td colspan="2" style="text-align:center;opacity:0.5;">暂无电信节点</td></tr>';
+                document.getElementById('cm-body').innerHTML = lists.cm.join('') || '<tr><td colspan="2" style="text-align:center;opacity:0.5;">暂无移动节点</td></tr>';
                 
-                document.getElementById('update-time').innerText = new Date().toLocaleString();
-            } catch (e) { console.error(e); }
+                document.getElementById('update-time').innerText = "最后更新: " + new Date().toLocaleString();
+            } catch (e) { console.error("CSV 加载错误:", e); }
         }
 
         window.onload = async () => {
             const token = localStorage.getItem('access_token');
             if (token) {
-                const res = await fetch(AUTH_API + token);
+                const res = await fetch(AUTH_API + encodeURIComponent(token));
                 const json = await res.json();
                 if(json.status === "ok") {
                     document.getElementById('auth-gate').style.display = 'none';
