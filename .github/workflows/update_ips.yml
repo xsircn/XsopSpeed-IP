@@ -35,16 +35,13 @@ jobs:
               > api # 清空旧的 api 文件
               
               # 3. 循环处理前 10 个最优 IP 并查询 ISP
-              # tail -n +2 跳过表头，head -n 10 取前 10 行
               tail -n +2 full_result.csv | head -n 10 | while IFS=, read -r line; do
-                  # 去除行尾可能存在的换行符
                   clean_line=$(echo "$line" | sed 's/\r//g')
                   ip=$(echo "$clean_line" | cut -d',' -f1)
                   
                   echo "正在查询 IP: $ip 的运营商信息..."
                   
                   # 使用 ip-api.com 获取 ISP (英文)
-                  # 如果接口调用失败，默认显示 Unknown
                   isp_info=$(curl -s --max-time 5 "http://ip-api.com/json/$ip?fields=isp" | sed 's/.*"isp":"\([^"]*\)".*/\1/')
                   if [ -z "$isp_info" ] || [[ "$isp_info" == *"{"* ]]; then isp_info="Unknown"; fi
                   
@@ -52,7 +49,6 @@ jobs:
                   echo "$clean_line,$isp_info" >> result.csv
                   
                   # 写入用于订阅的 api 文件 (格式: IP:443#运营商-Xsop)
-                  # 将 ISP 里的空格替换为下划线，防止订阅链接解析异常
                   safe_isp=$(echo "$isp_info" | tr ' ' '_')
                   echo "$ip:443#${safe_isp}-Xsop" >> api
               done
@@ -69,75 +65,5 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add result.csv api
-          git diff --quiet && git diff --staged --quiet || (git commit -m "自动更新优选IP及运营商: $(date)" && git push)name: Cloudflare Auto Speedtest
-
-on:
-  schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Download and Setup CloudflareST
-        run: |
-          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/XIU2/CloudflareSpeedTest/releases/latest | grep "browser_download_url.*linux_amd64.tar.gz" | cut -d '"' -f 4)
-          curl -L -o CloudflareST.tar.gz "$DOWNLOAD_URL"
-          tar -zxf CloudflareST.tar.gz
-          if [ -f "cfst" ]; then mv cfst CloudflareST; fi
-          chmod +x CloudflareST
-
-      - name: Run Speedtest and Identify ISP
-        run: |
-          # 1. 运行测速
-          sudo ./CloudflareST -n 500 -t 10 -p 10 -o "full_result.csv"
-          
-          if [ -f "full_result.csv" ]; then
-              # 2. 初始化结果文件
-              # 写入原有的表头，并在末尾追加 "运营商" 列
-              head -n 1 full_result.csv | sed 's/\r//g' | awk '{print $0",运营商"}' > result.csv
-              > api # 清空旧的 api 文件
-              
-              # 3. 循环处理前 10 个最优 IP 并查询 ISP
-              # tail -n +2 跳过表头，head -n 10 取前 10 行
-              tail -n +2 full_result.csv | head -n 10 | while IFS=, read -r line; do
-                  # 去除行尾可能存在的换行符
-                  clean_line=$(echo "$line" | sed 's/\r//g')
-                  ip=$(echo "$clean_line" | cut -d',' -f1)
-                  
-                  echo "正在查询 IP: $ip 的运营商信息..."
-                  
-                  # 使用 ip-api.com 获取 ISP (英文)
-                  # 如果接口调用失败，默认显示 Unknown
-                  isp_info=$(curl -s --max-time 5 "http://ip-api.com/json/$ip?fields=isp" | sed 's/.*"isp":"\([^"]*\)".*/\1/')
-                  if [ -z "$isp_info" ] || [[ "$isp_info" == *"{"* ]]; then isp_info="Unknown"; fi
-                  
-                  # 写入用于网页展示的 result.csv (追加 ISP 列)
-                  echo "$clean_line,$isp_info" >> result.csv
-                  
-                  # 写入用于订阅的 api 文件 (格式: IP:443#运营商-Xsop)
-                  # 将 ISP 里的空格替换为下划线，防止订阅链接解析异常
-                  safe_isp=$(echo "$isp_info" | tr ' ' '_')
-                  echo "$ip:443#${safe_isp}-Xsop" >> api
-              done
-              
-              echo "✅ 处理完成。api 文件预览："
-              cat api
-          else
-              echo "❌ 错误：未生成测速文件"
-              exit 1
-          fi
-
-      - name: Commit and Push
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add result.csv api
+          # 检查是否有文件更改，避免空提交报错
           git diff --quiet && git diff --staged --quiet || (git commit -m "自动更新优选IP及运营商: $(date)" && git push)
