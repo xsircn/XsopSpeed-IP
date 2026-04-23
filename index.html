@@ -3,276 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xsop.De | 优选节点监控</title>
+    <title>Xsop.De | 运营商优选</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_32x32.gif">
     <link rel="apple-touch-icon" type="image/png" href="https://xsop.de/uploads/default/optimized/1X/0a38ab23513b5cfeb82c04d7c4718908e69c1baf_2_180x180.gif">
-    
     <style>
         :root {
-            --primary: #4776E6;
-            --secondary: #8E54E9;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --bg-body: #f8fafc;
-            --text-main: #1e293b;
-            --text-sub: #64748b;
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.4);
+            --primary: #4776E6; --secondary: #8E54E9;
+            --cu: #ff6600; /* 联通橙 */
+            --ct: #005bac; /* 电信蓝 */
+            --cm: #0085cf; /* 移动蓝 */
+            --bg: #f8fafc; --text: #1e293b; --glass: rgba(255, 255, 255, 0.9);
         }
-
         @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-body: #0f172a;
-                --text-main: #f1f5f9;
-                --text-sub: #94a3b8;
-                --glass-bg: rgba(30, 41, 59, 0.7);
-                --glass-border: rgba(255, 255, 255, 0.1);
-            }
+            :root { --bg: #0f172a; --text: #f1f5f9; --glass: rgba(30, 41, 59, 0.7); }
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg-body); color: var(--text-main); line-height: 1.6; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; display: none; }
 
-        /* --- 验证遮罩层 (毛玻璃风格) --- */
-        #auth-gate {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px);
-            z-index: 9999; align-items: center; justify-content: center;
-        }
-        .auth-card {
-            background: var(--glass-bg); padding: 40px; border-radius: 28px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 92%; max-width: 420px; text-align: center;
-            border: 1px solid var(--glass-border);
-        }
+        /* 分类标题样式 */
+        .isp-group { margin-top: 40px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .isp-group h2 { font-size: 1.2rem; font-weight: 800; margin: 0; }
+        .isp-badge { padding: 4px 12px; border-radius: 6px; color: white; font-size: 0.75rem; font-weight: bold; }
+        .bg-cu { background: var(--cu); }
+        .bg-ct { background: var(--ct); }
+        .bg-cm { background: var(--cm); }
 
-        /* --- 主体容器 --- */
-        .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; display: none; }
-        
-        header { text-align: center; margin-bottom: 40px; }
-        h1 {
-            font-size: 2.8rem; font-weight: 800; margin-bottom: 12px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .meta-tag {
-            display: inline-flex; align-items: center; gap: 8px; background: var(--glass-bg);
-            padding: 8px 18px; border-radius: 50px; font-size: 0.85rem; color: var(--text-sub);
-            border: 1px solid var(--glass-border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        }
-
-        /* --- API 展示卡片区 --- */
-        .api-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px; margin-bottom: 40px;
-        }
-        .api-card {
-            background: var(--glass-bg); padding: 20px; border-radius: 20px;
-            border: 1px solid var(--glass-border); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-        .api-card:hover { transform: translateY(-5px); }
-        .api-card-title { display: flex; align-items: center; gap: 10px; font-weight: 700; margin-bottom: 15px; }
-        .api-card-title i { color: var(--primary); }
-        .api-box {
-            background: rgba(0,0,0,0.05); padding: 12px 15px; border-radius: 12px;
-            display: flex; justify-content: space-between; align-items: center; gap: 10px;
-        }
-        .api-url-text { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .btn-copy {
-            background: var(--primary); color: white; border: none; padding: 6px 14px;
-            border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: 600;
-            transition: all 0.2s; white-space: nowrap;
-        }
-        .btn-copy:hover { opacity: 0.9; transform: scale(1.05); }
-
-        /* --- 表格区域 --- */
-        .table-wrapper {
-            background: var(--glass-bg); border-radius: 24px; overflow: hidden;
-            border: 1px solid var(--glass-border); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-        }
+        /* 表格美化 */
+        .table-wrapper { background: var(--glass); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.1); }
         table { width: 100%; border-collapse: collapse; }
-        th { background: rgba(71, 118, 230, 0.08); padding: 18px 20px; text-align: left; font-size: 0.85rem; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.05em; }
-        td { padding: 16px 20px; border-bottom: 1px solid var(--glass-border); font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; }
-        
-        .ip-link { color: var(--primary); text-decoration: none; font-weight: 600; }
-        .badge { padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; }
-        .bg-green { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-        .bg-orange { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-        .speed-val { color: var(--success); font-weight: 800; font-size: 1rem; }
+        th { background: rgba(0,0,0,0.02); padding: 12px 20px; text-align: left; font-size: 0.8rem; color: #64748b; text-transform: uppercase; }
+        td { padding: 12px 20px; border-bottom: 1px solid rgba(0,0,0,0.03); font-family: monospace; }
+        .ip-text { color: var(--primary); font-weight: 600; }
+        .ms-text { color: #10b981; font-weight: 700; }
 
-        input#passInput {
-            width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 14px;
-            font-size: 20px; text-align: center; letter-spacing: 6px; outline: none; transition: 0.3s;
-        }
-        input#passInput:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(71, 118, 230, 0.1); }
-        
-        .verify-btn {
-            width: 100%; margin-top: 20px; padding: 16px; background: var(--primary);
-            color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: bold;
-            cursor: pointer; transition: 0.2s;
-        }
-        .verify-btn:hover { background: #3b66cf; }
+        /* 验证遮罩 (保持原逻辑) */
+        #auth-gate { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 99; align-items: center; justify-content: center; }
+        .auth-card { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 320px; }
+        input { width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #eee; border-radius: 10px; text-align: center; letter-spacing: 4px; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
-
 <body>
+
     <div id="auth-gate">
         <div class="auth-card">
-            <div style="font-size: 50px; margin-bottom: 15px;">🛡️</div>
-            <h2 style="margin-bottom: 8px;">内部资源保护</h2>
-            <p style="color: var(--text-sub); font-size: 14px; margin-bottom: 25px;">
-                请在 Telegram 频道获取访问口令<br>
-                <a href="https://t.me/nodeabot" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">点此获取口令 @nodeabot</a>
-            </p>
-            <input type="text" id="passInput" placeholder="000000" maxlength="6">
-            <div id="errorTip" style="color: #ef4444; font-size: 13px; margin-top: 10px; display: none; font-weight: 600;">❌ 口令验证失败，请核对</div>
-            <button onclick="handleVerify()" id="verifyBtn" class="verify-btn">即刻进入</button>
+            <h3>🔐 安全验证</h3>
+            <input type="text" id="passInput" placeholder="输入口令">
+            <button onclick="handleVerify()">确认进入</button>
         </div>
     </div>
 
     <div class="container" id="main-content">
-        <header>
-            <h1>Xsop.De 优选中心</h1>
-            <div class="meta-tag">
-                <i class="fa-regular fa-clock"></i> 
-                数据更新于: <span id="update-time">-</span>
-            </div>
+        <header style="text-align:center; margin-bottom:30px;">
+            <h1 style="background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">运营商优选 IP</h1>
+            <p style="font-size:0.8rem; opacity:0.6;">更新时间: <span id="update-time">-</span></p>
         </header>
 
-        <div class="api-grid">
-            <div class="api-card">
-                <div class="api-card-title"><i class="fa-solid fa-link"></i> 官方优选 API(整点更新)</div>
-                <div class="api-box">
-                    <span class="api-url-text" id="api-official">https://ibuy.eu.cc/api</span>
-                    <button class="btn-copy" onclick="copyText('api-official')">复制</button>
-                </div>
-            </div>
-            <div class="api-card">
-                <div class="api-card-title"><i class="fa-solid fa-shield-halved"></i> 聚合优选 API（每周更新）</div>
-                <div class="api-box">
-                    <span class="api-url-text" id="api-aggregate">https://ibuy.eu.cc/apis</span>
-                    <button class="btn-copy" onclick="copyText('api-aggregate')">复制</button>
-                </div>
-            </div>
+        <div class="isp-group"><span class="isp-badge bg-cu">CU</span><h2>中国联通</h2></div>
+        <div class="table-wrapper">
+            <table><thead><tr><th>IP 地址</th><th>延迟</th></tr></thead><tbody id="cu-body"></tbody></table>
         </div>
 
+        <div class="isp-group"><span class="isp-badge bg-ct">CT</span><h2>中国电信</h2></div>
         <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th><i class="fa-solid fa-server"></i> 节点地址</th>
-                        <th><i class="fa-solid fa-chart-line"></i> 丢包</th>
-                        <th><i class="fa-solid fa-bolt"></i> 延迟</th>
-                        <th><i class="fa-solid fa-download"></i> 速度</th>
-                    </tr>
-                </thead>
-                <tbody id="result-body"></tbody>
-            </table>
+            <table><thead><tr><th>IP 地址</th><th>延迟</th></tr></thead><tbody id="ct-body"></tbody></table>
+        </div>
+
+        <div class="isp-group"><span class="isp-badge bg-cm">CM</span><h2>中国移动</h2></div>
+        <div class="table-wrapper">
+            <table><thead><tr><th>IP 地址</th><th>延迟</th></tr></thead><tbody id="cm-body"></tbody></table>
         </div>
     </div>
 
     <script>
         const AUTH_API = "https://auth-gate.ibuy.eu.cc/?pass=";
-        const gate = document.getElementById('auth-gate');
-        const mainContent = document.getElementById('main-content');
-        const passInput = document.getElementById('passInput');
-        const errorTip = document.getElementById('errorTip');
-        const verifyBtn = document.getElementById('verifyBtn');
 
-        // 复制功能
-        window.copyText = function(id) {
-            const text = document.getElementById(id).innerText;
-            const btn = event.target;
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = btn.innerText;
-                btn.innerText = "已复制";
-                btn.style.background = "#10b981";
-                setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.style.background = "";
-                }, 1500);
-            });
-        };
-
-        async function checkPass(pwd) {
-            if (!pwd) return false;
-            try {
-                const res = await fetch(AUTH_API + encodeURIComponent(pwd));
-                const json = await res.json();
-                return json.status === "ok";
-            } catch (e) { return false; }
-        }
-
-        window.handleVerify = async function() {
-            const pwd = passInput.value.trim();
-            if (!pwd) return;
-            verifyBtn.innerText = "验证中...";
-            verifyBtn.disabled = true;
-            if (await checkPass(pwd)) {
+        async function handleVerify() {
+            const pwd = document.getElementById('passInput').value;
+            const res = await fetch(AUTH_API + pwd);
+            const json = await res.json();
+            if(json.status === "ok") {
                 localStorage.setItem('access_token', pwd);
-                showContent();
-            } else {
-                errorTip.style.display = 'block';
-                passInput.value = '';
-                verifyBtn.innerText = "即刻进入";
-                verifyBtn.disabled = false;
-            }
-        };
-
-        function showContent() {
-            gate.style.display = 'none';
-            mainContent.style.display = 'block';
-            loadData();
+                location.reload();
+            } else { alert("口令错误"); }
         }
 
         async function loadData() {
             try {
                 const response = await fetch('result.csv?t=' + Date.now());
                 const csvData = await response.text();
-                const rows = csvData.split('\n').filter(row => row.trim() !== "");
-                if (rows.length < 2) return;
+                const rows = csvData.split('\n').slice(1).filter(r => r.trim());
 
-                const headers = rows[0].split(',');
-                const idx = {
-                    ip: headers.findIndex(h => h.toLowerCase().includes("ip") || h.toLowerCase().includes("address")),
-                    loss: headers.findIndex(h => h.includes("丢包") || h.includes("Loss")),
-                    latency: headers.findIndex(h => h.includes("延迟") || h.includes("Latency")),
-                    speed: headers.findIndex(h => h.includes("速度") || h.includes("Speed"))
-                };
+                // 准备各运营商容器
+                const lists = { cu: [], ct: [], cm: [] };
 
-                const tbody = document.getElementById('result-body');
-                tbody.innerHTML = ''; 
+                rows.forEach(row => {
+                    const cols = row.split(',');
+                    const ip = cols[0];
+                    const latency = cols[2]; // 假设延迟在第3列
+                    const ispInfo = row.toLowerCase(); // 检查整行是否包含运营商关键字
 
-                for (let i = 1; i < rows.length; i++) {
-                    const cols = rows[i].split(',');
-                    if (cols.length < 4) continue;
-                    const lossValue = parseFloat(cols[idx.loss]);
-                    const speed = parseFloat(cols[idx.speed] || 0).toFixed(2);
-                    
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><a href="#" class="ip-link">${cols[idx.ip]}</a></td>
-                        <td><span class="badge ${lossValue > 0 ? 'bg-orange' : 'bg-green'}">${cols[idx.loss]}%</span></td>
-                        <td style="color: var(--text-sub)">${cols[idx.latency]} ms</td>
-                        <td><span class="speed-val">${speed} MB/s</span></td>
-                    `;
-                    tbody.appendChild(tr);
-                }
+                    const html = `<tr><td class="ip-text">${ip}</td><td class="ms-text">${latency} ms</td></tr>`;
+
+                    if (ispInfo.includes("unicom") || ispInfo.includes("联通")) lists.cu.push(html);
+                    else if (ispInfo.includes("telecom") || ispInfo.includes("电信")) lists.ct.push(html);
+                    else if (ispInfo.includes("mobile") || ispInfo.includes("移动")) lists.cm.push(html);
+                });
+
+                document.getElementById('cu-body').innerHTML = lists.cu.join('') || '<tr><td colspan="2">暂无数据</td></tr>';
+                document.getElementById('ct-body').innerHTML = lists.ct.push ? lists.ct.join('') : ''; 
+                document.getElementById('ct-body').innerHTML = lists.ct.join('') || '<tr><td colspan="2">暂无数据</td></tr>';
+                document.getElementById('cm-body').innerHTML = lists.cm.join('') || '<tr><td colspan="2">暂无数据</td></tr>';
+                
                 document.getElementById('update-time').innerText = new Date().toLocaleString();
-            } catch (e) { console.error("Data Load Error", e); }
+            } catch (e) { console.error(e); }
         }
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            const savedToken = localStorage.getItem('access_token');
-            if (savedToken && await checkPass(savedToken)) {
-                showContent();
-            } else {
-                gate.style.display = 'flex';
+        window.onload = async () => {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                const res = await fetch(AUTH_API + token);
+                const json = await res.json();
+                if(json.status === "ok") {
+                    document.getElementById('auth-gate').style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                    loadData();
+                    return;
+                }
             }
-        });
-
-        passInput.addEventListener('keypress', e => { if(e.key === 'Enter') handleVerify(); });
+            document.getElementById('auth-gate').style.display = 'flex';
+        };
     </script>
 </body>
 </html>
