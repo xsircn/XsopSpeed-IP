@@ -74,7 +74,8 @@
 
         input#passInput {
             width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;
-            font-size: 18px; text-align: center; letter-spacing: 4px; outline: none; margin: 20px 0;
+            font-size: 18px; text-align: center; letter-spacing: 2px; outline: none; margin: 20px 0;
+            text-transform: uppercase;
         }
         .verify-btn {
             width: 100%; padding: 14px; background: var(--primary); color: white;
@@ -88,7 +89,7 @@
         <div class="auth-card">
             <h2 style="margin-bottom: 8px;">🛡️ 内部资源保护</h2>
             <p style="color: var(--text-sub); font-size: 13px;">请在 Telegram 获取访问口令 <a href="https://t.me/nodeabot" target="_blank" style="color:var(--primary); text-decoration:none;">@nodeabot</a></p>
-            <input type="text" id="passInput" placeholder="000000" maxlength="6">
+            <input type="text" id="passInput" placeholder="输入6位口令" maxlength="6">
             <button onclick="handleVerify()" id="verifyBtn" class="verify-btn">即刻进入</button>
         </div>
     </div>
@@ -124,7 +125,8 @@
     </div>
 
     <script>
-        const AUTH_API = "https://auth-gate.ibuy.eu.cc/?pass=";
+        // 修正后的网关地址
+        const AUTH_API = "https://auto-gate.xsop.de/verify?code=";
         const gate = document.getElementById('auth-gate'), mainContent = document.getElementById('main-content');
 
         window.copyText = function(id) {
@@ -136,9 +138,9 @@
             });
         };
 
-        // 修改后的验证逻辑：只在点击按钮时调用后端
+        // 验证逻辑适配你的新 Worker
         window.handleVerify = async function() {
-            const pwd = document.getElementById('passInput').value.trim();
+            const pwd = document.getElementById('passInput').value.trim().toUpperCase();
             const btn = document.getElementById('verifyBtn');
             if(!pwd) return;
 
@@ -146,10 +148,12 @@
             btn.disabled = true;
 
             try {
+                // 调用新域名接口
                 const res = await fetch(AUTH_API + encodeURIComponent(pwd));
                 const json = await res.json();
                 
-                if (json.status === "ok") {
+                // 根据新 Worker 返回的 success 字段判断
+                if (json.success === true) {
                     // 验证通过，存入本地 Session (有效期12小时)
                     const session = {
                         auth: true,
@@ -158,12 +162,13 @@
                     localStorage.setItem('xsop_session', JSON.stringify(session));
                     showContent();
                 } else {
-                    alert("口令无效或已被他人使用");
+                    alert(json.msg || "口令无效或已被使用");
                     btn.innerText = "即刻进入";
                     btn.disabled = false;
                 }
             } catch (e) {
-                alert("网络错误");
+                alert("无法连接验证网关，请稍后再试");
+                btn.innerText = "即刻进入";
                 btn.disabled = false;
             }
         };
@@ -202,18 +207,15 @@
             } catch (e) { console.error(e); }
         }
 
-        // 修改后的加载逻辑：只检查本地 Session
         window.addEventListener('DOMContentLoaded', () => {
             const rawSession = localStorage.getItem('xsop_session');
             if (rawSession) {
                 const session = JSON.parse(rawSession);
-                // 检查 Session 是否存在且未过期
                 if (session.auth && Date.now() < session.expiry) {
                     showContent();
                     return;
                 }
             }
-            // 否则显示验证墙
             gate.style.display = 'flex';
         });
     </script>
