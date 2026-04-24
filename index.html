@@ -136,23 +136,43 @@
             });
         };
 
-        async function checkPass(pwd) {
+        // 修改后的验证逻辑：只在点击按钮时调用后端
+        window.handleVerify = async function() {
+            const pwd = document.getElementById('passInput').value.trim();
+            const btn = document.getElementById('verifyBtn');
+            if(!pwd) return;
+
+            btn.innerText = "校验中...";
+            btn.disabled = true;
+
             try {
                 const res = await fetch(AUTH_API + encodeURIComponent(pwd));
                 const json = await res.json();
-                return json.status === "ok";
-            } catch (e) { return false; }
-        }
-
-        window.handleVerify = async function() {
-            const pwd = document.getElementById('passInput').value.trim();
-            if (await checkPass(pwd)) {
-                localStorage.setItem('access_token', pwd);
-                showContent();
-            } else { alert("验证失败"); }
+                
+                if (json.status === "ok") {
+                    // 验证通过，存入本地 Session (有效期12小时)
+                    const session = {
+                        auth: true,
+                        expiry: Date.now() + (12 * 60 * 60 * 1000) 
+                    };
+                    localStorage.setItem('xsop_session', JSON.stringify(session));
+                    showContent();
+                } else {
+                    alert("口令无效或已被他人使用");
+                    btn.innerText = "即刻进入";
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert("网络错误");
+                btn.disabled = false;
+            }
         };
 
-        function showContent() { gate.style.display = 'none'; mainContent.style.display = 'block'; loadData(); }
+        function showContent() { 
+            gate.style.display = 'none'; 
+            mainContent.style.display = 'block'; 
+            loadData(); 
+        }
 
         async function loadData() {
             try {
@@ -182,9 +202,19 @@
             } catch (e) { console.error(e); }
         }
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            const token = localStorage.getItem('access_token');
-            if (token && await checkPass(token)) showContent(); else gate.style.display = 'flex';
+        // 修改后的加载逻辑：只检查本地 Session
+        window.addEventListener('DOMContentLoaded', () => {
+            const rawSession = localStorage.getItem('xsop_session');
+            if (rawSession) {
+                const session = JSON.parse(rawSession);
+                // 检查 Session 是否存在且未过期
+                if (session.auth && Date.now() < session.expiry) {
+                    showContent();
+                    return;
+                }
+            }
+            // 否则显示验证墙
+            gate.style.display = 'flex';
         });
     </script>
 </body>
