@@ -24,52 +24,61 @@ jobs:
           chmod +x CloudflareST
 
       - name: Run Speedtest and Upload to KV
-      - name: Run Speedtest and Upload to KV (Debug Version)
         env:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_NAMESPACE_ID: ${{ secrets.CF_NAMESPACE_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |
-          # 1. 运行测速
+          # 1. 运行测速 (保持你原有的测速参数)
           sudo ./CloudflareST -n 500 -t 10 -p 10 -o "full_result.csv"
           
           if [ -f "full_result.csv" ]; then
-              echo "=== 调试信息：CSV 文件前 3 行内容 ==="
+              echo "=== 调试：CSV 原始表头及前 3 行 ==="
               head -n 3 full_result.csv
-              echo "====================================="
+              echo "================================="
 
-              # 2. 提取数据（这里尝试获取 IP($1)、端口($2) 和 平均延迟($6)）
-              # 顺便用 tr -d '\r' 清除可能存在的 Windows 换行符，防止干扰 awk
-              TOP_IPS=$(tr -d '\r' < full_result.csv | awk -F',' 'NR>1 && NR<=11 {print $1 ":" $2 " #延迟:" $6 "ms"}')
+              # 2. 智能定位“端口”和“延迟”所在的列数（防止不同版本错位）
+              PORT_COL=$(head -n 1 full_result.csv | tr ',' '\n' | grep -E -n -i "端口|Port" | cut -d':' -f1)
+              DELAY_COL=$(head -n 1 full_result.csv | tr ',' '\n' | grep -E -n -i "延迟|Delay" | cut -d':' -f1)
               
-              echo "=== 调试信息：准备上传到 KV 的内容 ==="
+              # 如果定位失败，则使用默认的第 2 列(端口)和第 6 列(延迟)
+              PORT_COL=${PORT_COL:-2}
+              DELAY_COL=${DELAY_COL:-6}
+              
+              echo "定位成功 -> 端口列: $PORT_COL, 延迟列: $DELAY_COL"
+
+              # 3. 提取延迟最低的前 10 个 IP、端口和延迟数据
+              # 用 tr -d '\r' 去除 Windows 换行符干扰，NR>1 && NR<=11 提取前 10 行数据
+              TOP_IPS=$(tr -d '\r' < full_result.csv | awk -F',' -v p="$PORT_COL" -v d="$DELAY_COL" 'NR>1 && NR<=11 {print $1 ":" $p " | 延迟:" $d "ms"}')
+              
+              echo "=== 调试：准备上传到 KV 的前 10 数据 ==="
               echo "$TOP_IPS"
-              echo "====================================="
+              echo "========================================"
               
               if [ -z "$TOP_IPS" ]; then
-                  echo "错误：提取到的 IP 数据为空，请检查 CSV 格式！"
+                  echo "错误：提取到的数据为空，请检查 CSV 格式！"
                   exit 1
               fi
               
-              # 3. 上传到 Cloudflare KV 并打印 API 的返回结果
+              # 4. 上传到 Cloudflare KV (键名设为 cf_top10_ips)
               echo "开始上传到 Cloudflare KV..."
               RESPONSE=$(curl -s -w "\nHTTP_CODE: %{http_code}" -X PUT "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/storage/kv/namespaces/$CF_NAMESPACE_ID/values/cf_top10_ips" \
                    -H "Authorization: Bearer $CF_API_TOKEN" \
                    -H "Content-Type: text/plain" \
                    --data "$TOP_IPS")
               
-              echo "=== 调试信息：Cloudflare API 返回结果 ==="
+              echo "=== 调试：Cloudflare API 返回结果 ==="
               echo "$RESPONSE"
               echo "====================================="
               
-              # 检查 HTTP 状态码是否为 200
+              # 5. 校验状态码是否为 200 成功
               if [[ "$RESPONSE" == *"HTTP_CODE: 200"* ]]; then
-                  echo "KV 上传成功！"
+                  echo "🎉 KV 数据上传成功！"
               else
-                  echo "错误：Cloudflare API 提交失败！"
+                  echo "❌ 错误：Cloudflare API 提交失败，请检查上方返回的报错信息！"
                   exit 1
               fi
           else
-              echo "错误：未生成测速文件"
+              echo "错误：未生成测速文件 full_result.csv"
               exit 1
           fi
