@@ -23,29 +23,35 @@ jobs:
           if [ -f "cfst" ]; then mv cfst CloudflareST; fi
           chmod +x CloudflareST
 
-      - name: Run Speedtest
+      - name: Run Speedtest and Upload to KV
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_NAMESPACE_ID: ${{ secrets.CF_NAMESPACE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |
           # 1. 运行测速
           sudo ./CloudflareST -n 500 -t 10 -p 10 -o "full_result.csv"
           
           if [ -f "full_result.csv" ]; then
-              # 2. 生成网页用的 CSV
-              sed -n '1,11p' full_result.csv > result.csv
+              # 2. 提取前10个最优IP的：IP、443端口（按你原代码硬编码443）以及平均延迟
+              # CloudflareST的CSV：$1是IP，延迟通常在第6列(新版)或第4列。这里我们根据表头动态连缀，或者直接用awk处理
+              # 或者是用你习惯的格式，这里提取：IP:443#延迟ms
+              # 顺便处理下CFST的csv分隔符，提取前11行（1行表头+10行数据），排除表头
               
-              # 3. 【终极修正】硬编码端口号为 443
-              # $1 是 IP 地址，后面直接拼接 :443#Xsop-US
-              awk -F',' 'NR>1 && NR<=11 {print $1 ":443#Xsop-US"}' full_result.csv > api
+              TOP_IPS=$(awk -F',' 'NR>1 && NR<=11 {print $1 ":443 #Latency:" $(NF-1) "ms"}' full_result.csv)
               
-              echo "api 已生成，预览内容："
-              cat api
+              echo "准备上传的内容预览："
+              echo "$TOP_IPS"
+              
+              # 3. 上传到 Cloudflare KV (键名设为 cf_top10_ips)
+              echo "开始上传到 Cloudflare KV..."
+              curl -X PUT "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/storage/kv/namespaces/$CF_NAMESPACE_ID/values/cf_top10_ips" \
+                   -H "Authorization: Bearer $CF_API_TOKEN" \
+                   -H "Content-Type: text/plain" \
+                   --data "$TOP_IPS"
+              
+              echo -e "\nKV 上传完成！"
           else
               echo "错误：未生成测速文件"
               exit 1
           fi
-
-      - name: Commit and Push
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add result.csv api
-          git diff --quiet && git diff --staged --quiet || (git commit -m "修正订阅格式: $(date)" && git push)
