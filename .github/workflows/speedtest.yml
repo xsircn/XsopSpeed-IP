@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 必须赋予写入权限，否则 Actions 机器人无法将生成的 api 文件 push 回仓库
+    permissions:
+      contents: write
+      
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
@@ -66,6 +70,20 @@ jobs:
                   exit 1
               fi
               
+              # ---------------- 新增：生成根目录下的 api 文件 ----------------
+              awk -F',' '
+              NR>1 && NR<=11 {
+                  gsub(/[ \t\r\"]/, "", $1)
+                  if($1 != "") {
+                      print $1 ":443#Xsop-US"
+                  }
+              }' full_result.csv > api
+
+              echo "=== 调试：新生成的 api 文件内容 ==="
+              cat api
+              echo "=================================="
+              # -----------------------------------------------------------
+              
               # 3. 上传到 Cloudflare KV (键名设为 cf_top10_ips)
               echo "开始上传到 Cloudflare KV..."
               RESPONSE=$(curl -s -w "\nHTTP_CODE: %{http_code}" -X PUT "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/storage/kv/namespaces/$CF_NAMESPACE_ID/values/cf_top10_ips" \
@@ -87,4 +105,24 @@ jobs:
           else
               echo "错误：未生成测速文件 full_result.csv"
               exit 1
+          fi
+
+      # ---------------- 新增：将生成的 api 文件提交并推送到 GitHub ----------------
+      - name: Commit and Push API File
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -f "api" ]; then
+            git add api
+            # 检查文件内容是否有变化，有变化才提交，防止无意义的报错
+            if git diff --staged --quiet; then
+              echo "api 文件内容没有变化，跳过提交。"
+            else
+              git commit -m "chore: auto update speedtest api file [skip ci]"
+              git push
+            fi
+          else
+            echo "错误：未找到 api 文件，无法提交！"
+            exit 1
           fi
