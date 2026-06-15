@@ -4,8 +4,7 @@ on:
 workflow_dispatch:
 
 schedule:
-# 每4小时执行
-- cron: '0 */12 * * *'
+- cron: "0 */12 * * *"
 
 permissions:
 contents: write
@@ -15,7 +14,6 @@ group: auto-ip-collector
 cancel-in-progress: true
 
 jobs:
-
 collect:
 
 ```
@@ -25,79 +23,62 @@ timeout-minutes: 10
 
 steps:
 
-  # 拉代码
-  - name: 📥 Checkout
+  - name: Checkout
     uses: actions/checkout@v4
-    with:
-      fetch-depth: 1
 
-  # Python
-  - name: 🐍 Setup Python
+  - name: Setup Python
     uses: actions/setup-python@v5
     with:
       python-version: "3.11"
-      cache: "pip"
+      cache: pip
 
-  # 安装依赖
-  - name: 📦 Install
+  - name: Install dependencies
     run: |
       python -m pip install --upgrade pip
+      pip install requests
 
-      pip install \
-        requests
-
-  # 生成版本号
-  - name: 🕒 Build version
+  - name: Generate version
     run: |
-      TS=$(TZ=Asia/Shanghai date '+%Y-%m-%d_%H:%M')
+      echo "UPDATE_VERSION=$(TZ=Asia/Shanghai date '+%Y-%m-%d_%H:%M')" >> $GITHUB_ENV
 
-      echo "UPDATE_VERSION=$TS" >> $GITHUB_ENV
-
-  # 执行采集（失败自动重试）
-  - name: 🧠 Collect IP
+  - name: Run collector
     run: |
       for i in 1 2 3
       do
-          python collects.py && break
+        python collects.py && exit 0
 
-          echo "Retry $i"
+        echo "retry $i"
 
-          sleep 5
+        sleep 5
       done
 
-  # 判断文件是否变化
-  - name: 🔍 Detect changes
-    id: verify
-    run: |
+      exit 1
 
+  - name: Check changes
+    id: changes
+    run: |
       git add ipv4.txt ipv6.txt
 
       if git diff --cached --quiet
       then
-          echo "changed=false" >> $GITHUB_OUTPUT
+        echo "changed=false" >> $GITHUB_OUTPUT
       else
-          echo "changed=true" >> $GITHUB_OUTPUT
+        echo "changed=true" >> $GITHUB_OUTPUT
       fi
 
-  # 提交
-  - name: 📤 Commit
-    if: steps.verify.outputs.changed == 'true'
-
+  - name: Commit and push
+    if: steps.changes.outputs.changed == 'true'
     run: |
-
       git config user.name "github-actions[bot]"
 
-      git config user.email \
-      "41898282+github-actions[bot]@users.noreply.github.com"
+      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      git commit \
-        -m "Auto Update ${UPDATE_VERSION}"
+      git commit -m "Auto Update ${UPDATE_VERSION}"
 
       git push
 
-  # 无更新
-  - name: ✅ Skip
-    if: steps.verify.outputs.changed == 'false'
+  - name: Skip if unchanged
+    if: steps.changes.outputs.changed == 'false'
     run: |
       echo "No changes"
 ```
