@@ -117,7 +117,6 @@ jobs:
       - name: Commit and Push API File
         run: |
           git config --global user.name "github-actions[bot]"
-          # 使用规范的机器人邮箱，有助于 GitHub 正确识别该账号
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
           if [ -f "api" ]; then
@@ -127,8 +126,11 @@ jobs:
             else
               git commit -m "chore: auto update speedtest api file [skip ci]"
               
-              # ✨ 核心优化：在 push 前先通过 rebase 拉取远程更改。
-              # 这样就算你在网页端改了代码，或者有其他分支合并进来，它也会自动顺延，绝不报错。
+              # ✨ 核心修复：强制清理工作区中所有不需要的临时文件（如 ip.txt, full_result.csv 等）
+              # -d 表示清除未追踪的目录，-f 表示强制清除文件
+              git clean -df
+              
+              # 清理后再拉取，此时工作区是绝对干净的，不会再报错
               git pull --rebase origin main
               
               git push origin main
@@ -137,3 +139,4 @@ jobs:
             echo "错误：未找到 api 文件，无法提交！"
             exit 1
           fi
+
